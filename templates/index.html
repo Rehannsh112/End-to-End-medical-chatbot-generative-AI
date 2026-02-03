@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediBot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">M</div>
+        <div>
+          <h1>MediBot</h1>
+          <p>Your medical PDF assistant</p>
+        </div>
+      </div>
+      <button class="ghost" id="clearBtn">Clear</button>
+    </header>
+
+    <main class="chat" id="chat">
+      <div class="msg bot">
+        <div class="bubble">
+          Hi 👋 Ask me anything from your medical PDF.
+        </div>
+      </div>
+    </main>
+
+    <footer class="composer">
+      <form id="chatForm" autocomplete="off">
+        <input id="msgInput" name="msg" placeholder="Type your question… (e.g., What is acne?)" />
+        <button type="submit" class="send">Send</button>
+      </form>
+      <div class="hint">Press <kbd>Enter</kbd> to send</div>
+    </footer>
+  </div>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("msgInput");
+    const clearBtn = document.getElementById("clearBtn");
+
+    function addMessage(text, who="bot") {
+      const wrap = document.createElement("div");
+      wrap.className = `msg ${who}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      wrap.appendChild(bubble);
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+      return wrap;
+    }
+
+    function setLoading(on) {
+      if (on) {
+        return addMessage("Thinking…", "bot");
+      }
+      return null;
+    }
+
+    clearBtn.addEventListener("click", () => {
+      chat.innerHTML = "";
+      addMessage("Hi 👋 Ask me anything from your medical PDF.", "bot");
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      addMessage(text, "user");
+      input.value = "";
+      input.focus();
+
+      const loadingMsg = setLoading(true);
+
+      try {
+        const body = new URLSearchParams();
+        body.append("msg", text);
+
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString()
+        });
+
+        const data = await res.json();
+        loadingMsg.remove();
+        addMessage(data.answer || "No answer returned.", "bot");
+      } catch (err) {
+        loadingMsg.remove();
+        addMessage("Network error. Is the Flask server running?", "bot");
+      }
+    });
+  </script>
+</body>
+</html>
